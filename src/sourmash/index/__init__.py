@@ -3,7 +3,7 @@
 import os
 import sourmash
 from abc import abstractmethod, ABC
-from collections import namedtuple
+from collections import namedtuple, Counter
 import zipfile
 
 from .search import make_jaccard_search_query, make_gather_query
@@ -212,6 +212,69 @@ class Index(ABC):
 
         return results[:1]
 
+    def counter_gather(self, query, *args, **kwargs):
+        "Perform compositional analysis of the query using the gather algorithm"
+        if not query.minhash:             # empty query? quit.
+            return []
+
+        scaled = query.minhash.scaled
+        if not scaled:
+            raise ValueError('gather requires scaled signatures')
+
+        threshold_bp = kwargs.get('threshold_bp', 0.0)
+        threshold = 0.0
+        n_threshold_hashes = 0
+
+        # are we setting a threshold?
+        if threshold_bp:
+            # if we have a threshold_bp of N, then that amounts to N/scaled
+            # hashes:
+            n_threshold_hashes = float(threshold_bp) / scaled
+
+            # that then requires the following containment:
+            threshold = n_threshold_hashes / len(query.minhash)
+
+            # is it too high to ever match? if so, exit.
+            if threshold > 1.0:
+                return []
+
+        # Pre-loading signatures so we can index datasets
+        signatures = list(self.signatures())
+
+        # Process all datasets and create a Counter containing the size
+        # of hashes in common between query and each signature
+        counter = Counter()
+        for (i, ss) in enumerate(signatures):
+            counter[i] = query.minhash.count_common(ss.minhash, True)
+
+        # Decompose query into matching signatures using a greedy approach (gather)
+        results = []
+        match_size = n_threshold_hashes
+        while counter and match_size >= n_threshold_hashes:
+            most_common = counter.most_common()
+            dataset_id, size = most_common[0]
+            if size >= n_threshold_hashes:
+                match_size = size
+            else:
+                break
+
+            match = signatures[dataset_id]
+            del counter[dataset_id]
+            cont = query.minhash.contained_by(match.minhash, True)
+            if cont and cont >= threshold:
+                results.append((cont, match, getattr(self, "filename", None)))
+
+            # Prepare counter for finding the next match by decrementing
+            # all hashes found in the current match in other datasets
+            for (dataset_id, _) in most_common:
+                counter[dataset_id] -= signatures[dataset_id].minhash.count_common(match.minhash, True)
+                if counter[dataset_id] == 0:
+                    del counter[dataset_id]
+
+        results.sort(reverse=True, key=lambda x: (x[0], x[1].md5sum()))
+
+        return results
+
     @abstractmethod
     def select(self, ksize=None, moltype=None, scaled=None, num=None,
                abund=None, containment=None):
@@ -285,13 +348,13 @@ class LinearIndex(Index):
         self._signatures.append(node)
 
     def save(self, path):
-        from .signature import save_signatures
+        from ..signature import save_signatures
         with open(path, 'wt') as fp:
             save_signatures(self.signatures(), fp)
 
     @classmethod
     def load(cls, location):
-        from .signature import load_signatures
+        from ..signature import load_signatures
         si = load_signatures(location, do_raise=True)
 
         lidx = LinearIndex(si, filename=location)
