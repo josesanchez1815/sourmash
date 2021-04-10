@@ -10,8 +10,6 @@ pub mod sbt;
 #[cfg(feature = "experimental")]
 pub mod greyhound;
 
-pub mod storage;
-
 pub mod search;
 
 use std::ops::Deref;
@@ -24,10 +22,10 @@ use typed_builder::TypedBuilder;
 
 use crate::index::sbt::{Node, SBT};
 use crate::index::search::{search_minhashes, search_minhashes_containment};
-use crate::index::storage::{ReadData, ReadDataError, Storage};
 use crate::signature::{Signature, SigsTrait};
 use crate::sketch::nodegraph::Nodegraph;
 use crate::sketch::Sketch;
+use crate::storage::{ReadData, ReadDataError, Storage};
 use crate::Error;
 
 pub type MHBT = SBT<Node<Nodegraph>, Signature>;

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::{DirBuilder, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
@@ -57,7 +58,7 @@ impl From<&StorageArgs> for FSStorage {
 /// An abstraction for any place where we can store data.
 pub trait Storage {
     /// Save bytes into path
-    fn save(&self, path: &str, content: &[u8]) -> Result<String, Error>;
+    fn save(&mut self, path: &str, content: &[u8]) -> Result<String, Error>;
 
     /// Load bytes from path
     fn load(&self, path: &str) -> Result<Vec<u8>, Error>;
@@ -95,7 +96,7 @@ impl FSStorage {
 }
 
 impl Storage for FSStorage {
-    fn save(&self, path: &str, content: &[u8]) -> Result<String, Error> {
+    fn save(&mut self, path: &str, content: &[u8]) -> Result<String, Error> {
         if path.is_empty() {
             return Err(StorageError::EmptyPathError.into());
         }
@@ -127,8 +128,25 @@ impl Storage for FSStorage {
     }
 }
 
-pub trait ToWriter {
-    fn to_writer<W>(&self, writer: &mut W) -> Result<(), Error>
-    where
-        W: Write;
+#[derive(Default)]
+pub struct MemStorage {
+    storage: HashMap<String, Vec<u8>>,
+}
+
+impl MemStorage {}
+
+impl Storage for MemStorage {
+    fn save(&mut self, path: &str, content: &[u8]) -> Result<String, Error> {
+        self.storage.insert(path.into(), content.into());
+        Ok(path.into())
+    }
+
+    fn load(&self, path: &str) -> Result<Vec<u8>, Error> {
+        let v = self.storage.get(path).ok_or(ReadDataError::LoadError)?;
+        Ok(v.clone())
+    }
+
+    fn args(&self) -> StorageArgs {
+        unimplemented!()
+    }
 }
