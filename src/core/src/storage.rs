@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fs::{DirBuilder, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -58,13 +59,30 @@ impl From<&StorageArgs> for FSStorage {
 /// An abstraction for any place where we can store data.
 pub trait Storage {
     /// Save bytes into path
-    fn save(&mut self, path: &str, content: &[u8]) -> Result<String, Error>;
+    fn save(&self, path: &str, content: &[u8]) -> Result<String, Error>;
 
     /// Load bytes from path
     fn load(&self, path: &str) -> Result<Vec<u8>, Error>;
 
     /// Args for initializing a new Storage
     fn args(&self) -> StorageArgs;
+}
+
+impl<L> Storage for Mutex<L>
+where
+    L: ?Sized + Storage,
+{
+    fn save(&self, path: &str, content: &[u8]) -> Result<String, Error> {
+        self.lock().unwrap().save(path, content)
+    }
+
+    fn load(&self, path: &str) -> Result<Vec<u8>, Error> {
+        self.lock().unwrap().load(path)
+    }
+
+    fn args(&self) -> StorageArgs {
+        self.lock().unwrap().args()
+    }
 }
 
 /// Store files locally into a directory
@@ -96,7 +114,7 @@ impl FSStorage {
 }
 
 impl Storage for FSStorage {
-    fn save(&mut self, path: &str, content: &[u8]) -> Result<String, Error> {
+    fn save(&self, path: &str, content: &[u8]) -> Result<String, Error> {
         if path.is_empty() {
             return Err(StorageError::EmptyPathError.into());
         }
@@ -130,19 +148,21 @@ impl Storage for FSStorage {
 
 #[derive(Default)]
 pub struct MemStorage {
-    storage: HashMap<String, Vec<u8>>,
+    storage: Mutex<HashMap<String, Vec<u8>>>,
 }
 
 impl MemStorage {}
 
 impl Storage for MemStorage {
-    fn save(&mut self, path: &str, content: &[u8]) -> Result<String, Error> {
-        self.storage.insert(path.into(), content.into());
+    fn save(&self, path: &str, content: &[u8]) -> Result<String, Error> {
+        let mut lock = self.storage.lock().unwrap();
+        lock.insert(path.into(), content.into());
         Ok(path.into())
     }
 
     fn load(&self, path: &str) -> Result<Vec<u8>, Error> {
-        let v = self.storage.get(path).ok_or(ReadDataError::LoadError)?;
+        let lock = self.storage.lock().unwrap();
+        let v = lock.get(path).ok_or(ReadDataError::LoadError)?;
         Ok(v.clone())
     }
 

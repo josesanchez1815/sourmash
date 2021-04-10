@@ -14,7 +14,7 @@ pub mod search;
 
 use std::ops::Deref;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
@@ -141,7 +141,7 @@ pub struct SigStore<T> {
     #[builder(setter(into))]
     metadata: String,
 
-    storage: Option<Rc<dyn Storage>>,
+    storage: Option<Arc<Mutex<dyn Storage>>>,
 
     #[builder(setter(into), default)]
     data: OnceCell<T>,
