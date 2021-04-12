@@ -2,20 +2,19 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use typed_builder::TypedBuilder;
 
 use crate::index::{Comparable, DatasetInfo, Index, SigStore};
-use crate::storage::{FSStorage, ReadData, Storage, StorageInfo};
+use crate::storage::{FSStorage, InnerStorage, ReadData, Storage, StorageInfo};
 use crate::traits::ToWriter;
 use crate::Error;
 
 #[derive(TypedBuilder)]
 pub struct LinearIndex<L> {
     #[builder(default)]
-    storage: Option<Arc<Mutex<dyn Storage>>>,
+    storage: Option<InnerStorage>,
 
     #[builder(default)]
     datasets: Vec<SigStore<L>>,
@@ -85,7 +84,7 @@ where
     pub fn save_file<P: AsRef<Path>>(
         &mut self,
         path: P,
-        storage: Option<Arc<Mutex<dyn Storage>>>,
+        storage: Option<InnerStorage>,
     ) -> Result<(), Error> {
         let ref_path = path.as_ref();
         let mut basename = ref_path.file_name().unwrap().to_str().unwrap().to_owned();
@@ -98,10 +97,7 @@ where
             Some(s) => s,
             None => {
                 let subdir = format!(".linear.{}", basename);
-                Arc::new(Mutex::new(FSStorage::new(
-                    location.to_str().unwrap(),
-                    &subdir,
-                )))
+                InnerStorage::new(FSStorage::new(location.to_str().unwrap(), &subdir))
             }
         };
 
@@ -122,7 +118,7 @@ where
                     let _: &L = (*l).data().unwrap();
 
                     // set storage to new one
-                    l.storage = Some(Arc::clone(&storage));
+                    l.storage = Some(storage.clone());
 
                     let filename = (*l).save(&l.filename).unwrap();
 
@@ -167,23 +163,23 @@ where
         // TODO: support other storages
         let mut st: FSStorage = (&linear.storage.args).into();
         st.set_base(path.as_ref().to_str().unwrap());
-        let storage: Arc<Mutex<dyn Storage>> = Arc::new(Mutex::new(st));
+        let storage = InnerStorage::new(st);
 
         Ok(LinearIndex {
-            storage: Some(Arc::clone(&storage)),
+            storage: Some(storage.clone()),
             datasets: linear
                 .leaves
                 .into_iter()
                 .map(|l| {
                     let mut v: SigStore<L> = l.into();
-                    v.storage = Some(Arc::clone(&storage));
+                    v.storage = Some(storage.clone());
                     v
                 })
                 .collect(),
         })
     }
 
-    pub fn storage(&self) -> Option<Arc<Mutex<dyn Storage>>> {
+    pub fn storage(&self) -> Option<InnerStorage> {
         self.storage.clone()
     }
 }

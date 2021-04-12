@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
 
 use cfg_if::cfg_if;
 use getset::{CopyGetters, Getters, Setters};
@@ -16,7 +15,7 @@ use crate::encodings::{Color, Colors, Idx};
 use crate::signature::{Signature, SigsTrait};
 use crate::sketch::minhash::KmerMinHash;
 use crate::sketch::Sketch;
-use crate::storage::{MemStorage, Storage};
+use crate::storage::{InnerStorage, MemStorage, Storage};
 use crate::Error;
 use crate::HashIntoType;
 
@@ -36,7 +35,7 @@ pub struct RevIndex {
     colors: Colors,
 
     #[serde(skip)]
-    storage: Option<Arc<Mutex<dyn Storage>>>,
+    storage: Option<InnerStorage>,
 }
 
 impl RevIndex {
@@ -202,7 +201,7 @@ impl RevIndex {
             ref_sigs,
             template: template.clone(),
             colors,
-            storage: Some(Arc::new(Mutex::new(MemStorage::default()))),
+            storage: Some(InnerStorage::new(MemStorage::default())),
         }
     }
 

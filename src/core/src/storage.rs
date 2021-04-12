@@ -2,13 +2,34 @@ use std::collections::HashMap;
 use std::fs::{DirBuilder, File};
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use typed_builder::TypedBuilder;
 
 use crate::Error;
+
+#[derive(Clone)]
+pub struct InnerStorage(Arc<Mutex<dyn Storage>>);
+
+impl InnerStorage {
+    pub fn new(inner: impl Storage + 'static) -> InnerStorage {
+        InnerStorage(Arc::new(Mutex::new(inner)))
+    }
+}
+
+impl Storage for InnerStorage {
+    fn save(&self, path: &str, content: &[u8]) -> Result<String, Error> {
+        self.0.save(path, content)
+    }
+    fn load(&self, path: &str) -> Result<Vec<u8>, Error> {
+        self.0.load(path)
+    }
+    fn args(&self) -> StorageArgs {
+        self.0.args()
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum StorageError {
