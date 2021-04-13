@@ -50,6 +50,8 @@ typedef struct SourmashHyperLogLog SourmashHyperLogLog;
 
 typedef struct SourmashKmerMinHash SourmashKmerMinHash;
 
+typedef struct SourmashMemStorage SourmashMemStorage;
+
 typedef struct SourmashNodegraph SourmashNodegraph;
 
 typedef struct SourmashRevIndex SourmashRevIndex;
@@ -443,5 +445,9 @@ SourmashSignature **signatures_load_buffer(const char *ptr,
                                            uintptr_t ksize,
                                            const char *select_moltype,
                                            uintptr_t *size);
+
+SourmashMemStorage *memstorage_new(void);
+
+void memstorage_free(SourmashMemStorage *ptr);
 
 #endif /* SOURMASH_H_INCLUDED */
