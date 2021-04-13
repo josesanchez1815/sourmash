@@ -211,9 +211,6 @@ impl RevIndex {
         threshold: usize,
         queries: Option<&[KmerMinHash]>,
     ) -> RevIndex {
-        unimplemented!()
-    }
-    /*
         // If threshold is zero, let's merge all queries and save time later
         let merged_query = if let Some(qs) = queries {
             if threshold == 0 {
@@ -290,33 +287,30 @@ impl RevIndex {
 
         RevIndex {
             hash_to_color,
-            sig_files: search_sigs,
+            sig_files: vec![],
             ref_sigs: search_sigs.into(),
             template: template.clone(),
             colors,
+            storage: None,
         }
     }
-    */
 
-    fn map_hashes_colors(
+    fn map_hashes_colors_sigs(
         dataset_id: usize,
-        filename: &PathBuf,
+        search_sig: &Signature,
         queries: Option<&[KmerMinHash]>,
         merged_query: &Option<KmerMinHash>,
         threshold: usize,
         template: &Sketch,
     ) -> Option<(HashToColor, Colors)> {
         let mut search_mh = None;
-        let search_sig = Signature::from_path(&filename)
-            .unwrap_or_else(|_| panic!("Error processing {:?}", filename))
-            .swap_remove(0);
         if let Some(sketch) = search_sig.select_sketch(&template) {
             if let Sketch::MinHash(mh) = sketch {
                 search_mh = Some(mh);
             }
         }
-        let search_mh = search_mh.unwrap();
 
+        let search_mh = search_mh.unwrap();
         let mut hash_to_color = HashToColor::with_hasher(BuildNoHashHasher::default());
         let mut colors = Colors::default();
         let mut color = None;
@@ -351,6 +345,28 @@ impl RevIndex {
         } else {
             Some((hash_to_color, colors))
         }
+    }
+
+    fn map_hashes_colors(
+        dataset_id: usize,
+        filename: &PathBuf,
+        queries: Option<&[KmerMinHash]>,
+        merged_query: &Option<KmerMinHash>,
+        threshold: usize,
+        template: &Sketch,
+    ) -> Option<(HashToColor, Colors)> {
+        let search_sig = Signature::from_path(&filename)
+            .unwrap_or_else(|_| panic!("Error processing {:?}", filename))
+            .swap_remove(0);
+
+        RevIndex::map_hashes_colors_sigs(
+            dataset_id,
+            &search_sig,
+            queries,
+            merged_query,
+            threshold,
+            template,
+        )
     }
 
     fn reduce_hashes_colors(
@@ -423,7 +439,14 @@ impl RevIndex {
             let (dataset_id, size) = counter.most_common()[0];
             match_size = if size >= threshold { size } else { break };
 
-            let match_path = &self.sig_files[dataset_id as usize];
+            let p;
+            let match_path = if self.sig_files.is_empty() {
+                p = PathBuf::new(); // TODO: Fix somehow?
+                &p
+            } else {
+                &self.sig_files[dataset_id as usize]
+            };
+
             let ref_match;
             let match_sig = if let Some(refsigs) = &self.ref_sigs {
                 &refsigs[dataset_id as usize]
@@ -453,7 +476,7 @@ impl RevIndex {
             let intersect_bp = (match_mh.scaled() as u64 * intersect_orig) as usize;
 
             let f_unique_to_query = intersect_orig as f64 / query.size() as f64;
-            let match_ = match_mh.clone();
+            let match_ = match_sig.clone();
 
             // TODO: all of these
             let f_unique_weighted = 0.;
@@ -570,7 +593,14 @@ impl RevIndex {
         for (dataset_id, size) in counter.most_common() {
             let match_size = if size >= threshold { size } else { break };
 
-            let match_path = &self.sig_files[dataset_id as usize];
+            let p;
+            let match_path = if self.sig_files.is_empty() {
+                p = PathBuf::new(); // TODO: Fix somehow?
+                &p
+            } else {
+                &self.sig_files[dataset_id as usize]
+            };
+
             let ref_match;
             let match_sig = if let Some(refsigs) = &self.ref_sigs {
                 &refsigs[dataset_id as usize]
@@ -631,7 +661,7 @@ pub struct GatherResult {
     name: String,
 
     md5: String,
-    match_: KmerMinHash,
+    match_: Signature,
     f_match_orig: f64,
     unique_intersect_bp: usize,
     gather_result_rank: usize,
@@ -639,7 +669,7 @@ pub struct GatherResult {
 }
 
 impl GatherResult {
-    pub fn get_match(&self) -> KmerMinHash {
+    pub fn get_match(&self) -> Signature {
         self.match_.clone()
     }
 }

@@ -187,10 +187,7 @@ unsafe fn revindex_gather(
         .into_iter()
         .map(|r| {
             let filename = r.filename().to_owned();
-            let mut sig = Signature::from_path(&filename).unwrap().swap_remove(0);
-            sig.reset_sketches();
-            sig.push(Sketch::MinHash(r.get_match().clone()));
-
+            let sig = r.get_match();
             (r.f_match(), sig, filename)
         })
         .collect();

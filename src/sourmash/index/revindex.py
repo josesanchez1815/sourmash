@@ -100,7 +100,6 @@ class RevIndex(RustObject, Index):
                 self.threshold,
                 queries_ptr,
                 queries_size,
-                True,
             )
 
     def signatures(self):
