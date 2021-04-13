@@ -47,7 +47,7 @@ ffi_fn! {
       None
     } else {
         queries_vec =
-          slice::from_raw_parts(queries_ptr, inqueries).into_iter().map(|mh_ptr|
+          slice::from_raw_parts(queries_ptr, inqueries).iter().map(|mh_ptr|
             // TODO: avoid this clone
           SourmashKmerMinHash::as_rust(*mh_ptr).clone()).collect();
         Some(queries_vec.as_ref())
@@ -74,7 +74,7 @@ ffi_fn! {
   ) -> Result<*mut SourmashRevIndex> {
     let search_sigs: Vec<Signature> = {
       assert!(!search_sigs_ptr.is_null());
-        slice::from_raw_parts(search_sigs_ptr, insigs).into_iter().map(|sig|
+        slice::from_raw_parts(search_sigs_ptr, insigs).iter().map(|sig|
           SourmashSignature::as_rust(*sig)
           ).cloned().collect()
     };
@@ -90,7 +90,7 @@ ffi_fn! {
       None
     } else {
         queries_vec =
-          slice::from_raw_parts(queries_ptr, inqueries).into_iter().map(|mh_ptr|
+          slice::from_raw_parts(queries_ptr, inqueries).iter().map(|mh_ptr|
             // TODO: avoid this clone
           SourmashKmerMinHash::as_rust(*mh_ptr).clone()).collect();
         Some(queries_vec.as_ref())

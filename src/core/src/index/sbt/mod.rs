@@ -276,7 +276,7 @@ where
         Ok(SBT {
             d,
             factory,
-            storage: Some(storage.clone()),
+            storage: Some(storage),
             nodes,
             leaves,
         })

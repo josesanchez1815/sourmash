@@ -15,7 +15,7 @@ use crate::encodings::{Color, Colors, Idx};
 use crate::signature::{Signature, SigsTrait};
 use crate::sketch::minhash::KmerMinHash;
 use crate::sketch::Sketch;
-use crate::storage::{InnerStorage, MemStorage, Storage};
+//use crate::storage::{InnerStorage, MemStorage};
 use crate::Error;
 use crate::HashIntoType;
 
@@ -33,9 +33,8 @@ pub struct RevIndex {
 
     template: Sketch,
     colors: Colors,
-
-    #[serde(skip)]
-    storage: Option<InnerStorage>,
+    //#[serde(skip)]
+    //storage: Option<InnerStorage>,
 }
 
 impl RevIndex {
@@ -201,7 +200,7 @@ impl RevIndex {
             ref_sigs,
             template: template.clone(),
             colors,
-            storage: Some(InnerStorage::new(MemStorage::default())),
+            //            storage: Some(InnerStorage::new(MemStorage::default())),
         }
     }
 
@@ -291,7 +290,7 @@ impl RevIndex {
             ref_sigs: search_sigs.into(),
             template: template.clone(),
             colors,
-            storage: None,
+            //storage: None,
         }
     }
 
@@ -304,13 +303,11 @@ impl RevIndex {
         template: &Sketch,
     ) -> Option<(HashToColor, Colors)> {
         let mut search_mh = None;
-        if let Some(sketch) = search_sig.select_sketch(&template) {
-            if let Sketch::MinHash(mh) = sketch {
-                search_mh = Some(mh);
-            }
+        if let Some(Sketch::MinHash(mh)) = search_sig.select_sketch(&template) {
+            search_mh = Some(mh);
         }
 
-        let search_mh = search_mh.unwrap();
+        let search_mh = search_mh.expect("Couldn't find a compatible MinHash");
         let mut hash_to_color = HashToColor::with_hasher(BuildNoHashHasher::default());
         let mut colors = Colors::default();
         let mut color = None;
@@ -349,7 +346,7 @@ impl RevIndex {
 
     fn map_hashes_colors(
         dataset_id: usize,
-        filename: &PathBuf,
+        filename: &Path,
         queries: Option<&[KmerMinHash]>,
         merged_query: &Option<KmerMinHash>,
         threshold: usize,
@@ -413,7 +410,7 @@ impl RevIndex {
     ) -> Result<Vec<String>, Box<dyn std::error::Error>> {
         let mut matches = vec![];
         if similarity {
-            todo!("correct threshold")
+            unimplemented!("TODO: threshold correction")
         }
 
         for (dataset_id, size) in counter.most_common() {
@@ -457,12 +454,10 @@ impl RevIndex {
             };
 
             let mut match_mh = None;
-            if let Some(sketch) = match_sig.select_sketch(&self.template) {
-                if let Sketch::MinHash(mh) = sketch {
-                    match_mh = Some(mh);
-                }
+            if let Some(Sketch::MinHash(mh)) = match_sig.select_sketch(&self.template) {
+                match_mh = Some(mh);
             }
-            let match_mh = match_mh.unwrap();
+            let match_mh = match_mh.expect("Couldn't find a compatible MinHash");
 
             // Calculate stats
             let f_orig_query = match_size as f64 / query.size() as f64;
@@ -537,7 +532,7 @@ impl RevIndex {
     pub fn counter(&self) -> SigCounter {
         self.hash_to_color
             .iter()
-            .flat_map(|(_, color)| self.colors.indices(color).into_iter())
+            .flat_map(|(_, color)| self.colors.indices(color))
             .cloned()
             .collect()
     }
@@ -611,10 +606,8 @@ impl RevIndex {
             };
 
             let mut match_mh = None;
-            if let Some(sketch) = match_sig.select_sketch(&self.template) {
-                if let Sketch::MinHash(mh) = sketch {
-                    match_mh = Some(mh);
-                }
+            if let Some(Sketch::MinHash(mh)) = match_sig.select_sketch(&self.template) {
+                match_mh = Some(mh);
             }
             let match_mh = match_mh.unwrap();
 
