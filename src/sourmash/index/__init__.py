@@ -6,7 +6,7 @@ from abc import abstractmethod, ABC
 from collections import namedtuple, Counter
 import zipfile
 
-from .search import make_jaccard_search_query, make_gather_query
+from ..search import make_jaccard_search_query, make_gather_query
 
 # generic return tuple for Index.search and Index.gather
 IndexSearchResult = namedtuple('Result', 'score, signature, location')
