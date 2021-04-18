@@ -445,17 +445,17 @@ impl Comparable<Nodegraph> for Nodegraph {
             .zip(&other.bs)
             .map(|(bs, bs_other)| bs.intersection_count(bs_other))
             .sum();
-        let size: usize = self.bs.iter().map(|bs| bs.ones().count()).sum();
+        let size: usize = self.bs.iter().map(|bs| bs.count_ones(..)).sum();
         result as f64 / size as f64
     }
 }
 
 impl Comparable<KmerMinHash> for Nodegraph {
-    fn similarity(&self, other: &KmerMinHash) -> f64 {
+    fn similarity(&self, _other: &KmerMinHash) -> f64 {
         unimplemented!()
     }
 
-    fn containment(&self, other: &KmerMinHash) -> f64 {
+    fn containment(&self, _other: &KmerMinHash) -> f64 {
         /*
           let result: usize = other.mins().iter().map(|h| self.get(*h)).sum();
           result as f64 / self.size() as f64
