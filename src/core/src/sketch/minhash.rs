@@ -604,13 +604,53 @@ impl KmerMinHash {
             Ok((common, combined_mh.mins.len() as u64))
         } else {
             // Intersection for scaled MinHash sketches
-            let common: Vec<u64> = Intersection::new(self.mins.iter(), other.mins.iter())
-                .cloned()
-                .collect();
 
-            let union = Union::new(self.mins.iter(), other.mins.iter()).count();
+            let mut me = self.mins.iter().peekable();
+            let mut other = other.mins.iter().peekable();
+            let mut common: Vec<u64> = vec![];
+            let mut union_size = 0;
 
-            Ok((common, union as u64))
+            loop {
+                match (me.peek(), other.peek()) {
+                    (Some(ref left_key), Some(ref right_key)) => {
+                        let res = left_key.cmp(right_key);
+                        match res {
+                            Ordering::Less => {
+                                me.next();
+                                union_size += 1;
+                            }
+                            Ordering::Greater => {
+                                other.next();
+                                union_size += 1;
+                            }
+                            Ordering::Equal => {
+                                other.next();
+                                common.push(***left_key);
+                                me.next();
+                                union_size += 1;
+                            }
+                        };
+                    }
+                    (None, Some(_)) => {
+                        other.next();
+                        union_size += 1;
+                    }
+                    (Some(_), None) => {
+                        me.next();
+                        union_size += 1;
+                    }
+                    _ => break,
+                };
+            }
+            /*
+                let common: Vec<u64> = Intersection::new(self.mins.iter(), other.mins.iter())
+                    .cloned()
+                    .collect();
+
+                let union = Union::new(self.mins.iter(), other.mins.iter()).count();
+
+            */
+            Ok((common, union_size as u64))
         }
     }
 
@@ -642,10 +682,50 @@ impl KmerMinHash {
             Ok((it2.count() as u64, combined_mh.mins.len() as u64))
         } else {
             // Intersection for scaled MinHash sketches
+            let mut me = self.mins.iter().peekable();
+            let mut other = other.mins.iter().peekable();
+            let mut common = 0;
+            let mut union_size = 0;
+
+            loop {
+                match (me.peek(), other.peek()) {
+                    (Some(ref left_key), Some(ref right_key)) => {
+                        let res = left_key.cmp(right_key);
+                        match res {
+                            Ordering::Less => {
+                                me.next();
+                                union_size += 1;
+                            }
+                            Ordering::Greater => {
+                                other.next();
+                                union_size += 1;
+                            }
+                            Ordering::Equal => {
+                                other.next();
+                                me.next();
+                                common += 1;
+                                union_size += 1;
+                            }
+                        };
+                    }
+                    (None, Some(_)) => {
+                        other.next();
+                        union_size += 1;
+                    }
+                    (Some(_), None) => {
+                        me.next();
+                        union_size += 1;
+                    }
+                    _ => break,
+                };
+            }
+            /*
             let common = Intersection::new(self.mins.iter(), other.mins.iter()).count();
             let union = Union::new(self.mins.iter(), other.mins.iter()).count();
 
             Ok((common as u64, union as u64))
+            */
+            Ok((common as u64, union_size as u64))
         }
     }
 
@@ -919,15 +999,11 @@ impl<T: Ord, I: Iterator<Item = T>> Iterator for Union<T, I> {
         };
 
         match res {
-            Ordering::Less => {
-                return self.iter.next();
-            }
-            Ordering::Greater => {
-                return self.other.next();
-            }
+            Ordering::Less => self.iter.next(),
+            Ordering::Greater => self.other.next(),
             Ordering::Equal => {
                 self.other.next();
-                return self.iter.next();
+                self.iter.next()
             }
         }
     }
