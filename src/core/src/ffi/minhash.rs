@@ -389,13 +389,14 @@ unsafe fn kmerminhash_count_common(ptr: *const SourmashKmerMinHash, other: *cons
 }
 
 ffi_fn! {
-unsafe fn kmerminhash_intersection_size(ptr: *const SourmashKmerMinHash, other: *const SourmashKmerMinHash)
+unsafe fn kmerminhash_intersection_size(ptr: *const SourmashKmerMinHash, other: *const SourmashKmerMinHash, union_size: *mut u64)
     -> Result<u64> {
     let mh = SourmashKmerMinHash::as_rust(ptr);
     let other_mh = SourmashKmerMinHash::as_rust(other);
 
-    if let Ok((_, size)) = mh.intersection_size(other_mh) {
-        return Ok(size);
+    if let Ok((common, us)) = mh.intersection_size(other_mh) {
+        *union_size = us;
+        return Ok(common);
     }
 
     Ok(0)
