@@ -51,13 +51,6 @@ class SigLeaf(Leaf):
     def update(self, parent):
         mh = self.data.minhash
         parent.data.update(mh)
-        min_n_below = parent.metadata.get('min_n_below', sys.maxsize)
-        min_n_below = min(len(mh), min_n_below)
-
-        if min_n_below == 0:
-            min_n_below = 1
-
-        parent.metadata['min_n_below'] = min_n_below
 
     @property
     def data(self):
