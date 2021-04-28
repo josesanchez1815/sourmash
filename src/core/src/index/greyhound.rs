@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
 
 use crate::encodings::{Color, Colors, Idx};
+use crate::index::Index;
 use crate::signature::{Signature, SigsTrait};
 use crate::sketch::minhash::KmerMinHash;
 use crate::sketch::Sketch;
@@ -664,6 +665,34 @@ pub struct GatherResult {
 impl GatherResult {
     pub fn get_match(&self) -> Signature {
         self.match_.clone()
+    }
+}
+
+impl<'a> Index<'a> for RevIndex {
+    type Item = Signature;
+
+    fn insert(&mut self, _node: Self::Item) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn save<P: AsRef<Path>>(&self, _path: P) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn load<P: AsRef<Path>>(_path: P) -> Result<(), Error> {
+        unimplemented!()
+    }
+
+    fn signatures(&self) -> Vec<Self::Item> {
+        if let Some(ref sigs) = self.ref_sigs {
+            sigs.iter().map(|x| x.clone()).collect()
+        } else {
+            unimplemented!()
+        }
+    }
+
+    fn signature_refs(&self) -> Vec<&Self::Item> {
+        unimplemented!()
     }
 }
 

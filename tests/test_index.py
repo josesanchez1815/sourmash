@@ -1273,8 +1273,6 @@ def test_revindex_gather():
     assert matches[0][1] == ss2
 
     matches = lidx.gather(ss47)
-    assert len(matches) == 2
+    assert len(matches) == 1
     assert matches[0][0] == 1.0
     assert matches[0][1] == ss47
-    assert round(matches[1][0], 2) == 0.0
-    assert matches[1][1] == ss63

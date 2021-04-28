@@ -329,6 +329,8 @@ const SourmashSearchResult *const *revindex_search(const SourmashRevIndex *ptr,
                                                    bool _ignore_abundance,
                                                    uintptr_t *size);
 
+SourmashSignature **revindex_signatures(const SourmashRevIndex *ptr, uintptr_t *size);
+
 SourmashStr searchresult_filename(const SourmashSearchResult *ptr);
 
 void searchresult_free(SourmashSearchResult *ptr);

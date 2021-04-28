@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::slice;
 
 use crate::index::greyhound::RevIndex;
+use crate::index::Index;
 use crate::signature::{Signature, SigsTrait};
 use crate::sketch::minhash::KmerMinHash;
 use crate::sketch::Sketch;
@@ -213,4 +214,23 @@ pub unsafe extern "C" fn revindex_scaled(ptr: *const SourmashRevIndex) -> u64 {
     } else {
         unimplemented!()
     }
+}
+
+ffi_fn! {
+unsafe fn revindex_signatures(ptr: *const SourmashRevIndex,
+                              size: *mut usize) -> Result<*mut *mut SourmashSignature> {
+    let revindex = SourmashRevIndex::as_rust(ptr);
+
+    let sigs = revindex.signatures();
+
+    // FIXME: use the ForeignObject trait, maybe define new method there...
+    let ptr_sigs: Vec<*mut SourmashSignature> = sigs.into_iter().map(|x| {
+      Box::into_raw(Box::new(x)) as *mut SourmashSignature
+    }).collect();
+
+    let b = ptr_sigs.into_boxed_slice();
+    *size = b.len();
+
+    Ok(Box::into_raw(b) as *mut *mut SourmashSignature)
+}
 }
