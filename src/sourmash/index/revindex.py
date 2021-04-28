@@ -12,6 +12,8 @@ class RevIndex(RustObject, Index):
 
     def __init__(
         self,
+        *,
+        signatures=None,
         signature_paths=None,
         template=None,
         threshold=0,
@@ -23,9 +25,9 @@ class RevIndex(RustObject, Index):
         self.queries = queries
         self.keep_sigs = keep_sigs
         self.signature_paths = signature_paths
-        self._signatures = []
+        self._signatures = signatures
 
-        if signature_paths is None:
+        if signature_paths is None or signatures is None:
             # delay initialization
             self._objptr = ffi.NULL
         else:
@@ -126,6 +128,8 @@ class RevIndex(RustObject, Index):
         pass
 
     def insert(self, node):
+        if self._signatures is None:
+            self._signatures = []
         self._signatures.append(node)
 
     def save(self, path):
